@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHYS 226 Lab 2 - Visual Odometry & Inclined Air-Hockey</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #eef2f7;
+        color: #172033;
+        overflow: hidden;
+    }
+
+    .lab-container {
+        width: 100%;
+        max-width: 1250px;
+        height: 650px;
+        margin: 0 auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .header {
+        flex: 0 0 auto;
+        background: #172033;
+        color: white;
+        border-radius: 8px;
+        padding: 8px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 48px;
+    }
+
+    .header h1 {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .header p {
+        margin: 2px 0 0;
+        font-size: 11px;
+        opacity: 0.85;
+    }
+
+    .status {
+        font-size: 12px;
+        padding: 5px 9px;
+        border-radius: 12px;
+        background: #52627a;
+        white-space: nowrap;
+    }
+
+    .status.running {
+        background: #198754;
+    }
+
+    .status.paused {
+        background: #d97706;
+    }
+
+    .main-area {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 265px 1fr;
+        gap: 8px;
+    }
+
+    .controls {
+        background: white;
+        border-radius: 8px;
+        padding: 10px;
+        overflow-y: auto;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    .controls h2 {
+        font-size: 14px;
+        margin: 0 0 8px;
+    }
+
+    .control-group {
+        margin-bottom: 9px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e4e8ee;
+    }
+
+    .control-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .value {
+        color: #0d6efd;
+        font-weight: bold;
+    }
+
+    input[type="range"] {
+        width: 100%;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .input-row {
+        display: flex;
+        gap: 5px;
+    }
+
+    .input-row input {
+        width: 50%;
+        padding: 5px;
+        border: 1px solid #cbd3df;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .equation {
+        background: #f1f5f9;
+        padding: 7px;
+        border-radius: 5px;
+        font-size: 11px;
+        line-height: 1.45;
+        margin-top: 4px;
+    }
+
+    .buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5px;
+        margin-top: 8px;
+    }
+
+    button {
+        border: none;
+        border-radius: 5px;
+        padding: 7px 5px;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: opacity 0.15s;
+    }
+
+    button:hover {
+        opacity: 0.85;
+    }
+
+    .start {
+        background: #198754;
+        color: white;
+    }
+
+    .pause {
+        background: #d97706;
+        color: white;
+    }
+
+    .reset {
+        background: #6c757d;
+        color: white;
+    }
+
+    .download {
+        background: #0d6efd;
+        color: white;
+        grid-column: 1 / 3;
+    }
+
+    .simulation-panel {
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .canvas-wrapper {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        background: #dce5ee;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    .readout {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: rgba(255,255,255,0.92);
+        border-radius: 5px;
+        padding: 6px 8px;
+        font-size: 11px;
+        line-height: 1.5;
+        pointer-events: none;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    .coordinates {
+        position: absolute;
+        right: 8px;
+        top: 8px;
+        background: rgba(20,28,42,0.88);
+        color: white;
+        border-radius: 5px;
+        padding: 6px 8px;
+        font-family: monospace;
+        font-size: 11px;
+        line-height: 1.5;
+        pointer-events: none;
+    }
+
+    .data-panel {
+        flex: 0 0 68px;
+        background: white;
+        border-radius: 8px;
+        padding: 7px 10px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    .data-item {
+        min-width: 0;
+    }
+
+    .data-item span:first-child {
+        display: block;
+        color: #687386;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .data-item span:last-child {
+        display: block;
+        font-size: 13px;
+        font-weight: bold;
+        margin-top: 3px;
+        white-space: nowrap;
+    }
+
+    .footer {
+        flex: 0 0 auto;
+        text-align: center;
+        color: #687386;
+        font-size: 9px;
+    }
+
+    @media (max-width: 760px) {
+        html, body {
+            overflow: auto;
+        }
+
+        .lab-container {
+            height: auto;
+            min-height: 650px;
+        }
+
+        .main-area {
+            grid-template-columns: 1fr;
+        }
+
+        .controls {
+            max-height: 250px;
+        }
+
+        .canvas-wrapper {
+            height: 370px;
+            flex: none;
+        }
+
+        .data-panel {
+            flex: none;
+            height: auto;
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="lab-container">
+
+    <div class="header">
+        <div>
+            <h1>PHYS 226 — Lab 2: Visual Odometry &amp; Inclined Air-Hockey Table</h1>
+            <p>Interactive simulation for position tracking and inclined-plane motion</p>
+        </div>
+        <div id="status" class="status">READY</div>
+    </div>
+
+    <div class="main-area">
+
+        <!-- ================= CONTROLS ================= -->
+        <div class="controls">
+
+            <h2>Simulation Parameters</h2>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Inclination Angle θ</span>
+                    <span class="value"><span id="thetaValue">10.0</span>°</span>
+                </div>
+                <input
+                    type="range"
+                    id="theta"
+                    min="0"
+                    max="30"
+                    step="0.1"
+                    value="10">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Initial Velocity v₀</span>
+                    <span class="value"><span id="velocityValue">1.00</span> m/s</span>
+                </div>
+                <input
+                    type="range"
+                    id="velocity"
+                    min="0.1"
+                    max="2"
+                    step="0.01"
+                    value="1">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Gravity g</span>
+                    <span class="value"><span id="gravityValue">9.80</span> m/s²</span>
+                </div>
+                <input
+                    type="range"
+                    id="gravity"
+                    min="1"
+                    max="15"
+                    step="0.01"
+                    value="9.8">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Scaling Factor α = Lm / Lp</span>
+                </div>
+
+                <div class="input-row">
+                    <input
+                        type="number"
+                        id="meters"
+                        value="1"
+                        min="0.01"
+                        step="0.01"
+                        title="Physical distance in meters">
+
+                    <input
+                        type="number"
+                        id="pixels"
+                        value="100"
+                        min="1"
+                        step="1"
+                        title="Corresponding distance in pixels">
+                </div>
+
+                <div class="equation">
+                    α =
+                    <span id="alphaValue">0.0100</span>
+                    m/pixel
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Physics Model</span>
+                </div>
+
+                <div class="equation">
+                    <b>a = g sin(θ)</b><br>
+                    Acceleration down incline<br><br>
+
+                    <b>y(t) = y₀ + v₀t + ½at²</b><br>
+                    Position along incline
+                </div>
+            </div>
+
+            <div class="buttons">
+                <button class="start" id="startBtn">▶ Start</button>
+                <button class="pause" id="pauseBtn">Ⅱ Pause</button>
+                <button class="reset" id="resetBtn">↻ Reset</button>
+                <button class="download" id="downloadBtn">↓ Download CSV Data</button>
+            </div>
+
+        </div>
+
+        <!-- ================= SIMULATION ================= -->
+        <div class="simulation-panel">
+
+            <div class="canvas-wrapper">
+
+                <canvas id="simulationCanvas"></canvas>
+
+                <div class="readout">
+                    <b>Motion Data</b><br>
+                    t = <span id="timeDisplay">0.000</span> s<br>
+                    v = <span id="speedDisplay">1.000</span> m/s<br>
+                    a = <span id="accelDisplay">0.000</span> m/s²
+                </div>
+
+                <div class="coordinates">
+                    CAMERA COORDINATES<br>
+                    x = <span id="xPixelDisplay">0.0</span> px<br>
+                    y = <span id="yPixelDisplay">0.0</span> px
+                </div>
+
+            </div>
+
+            <div class="data-panel">
+
+                <div class="data-item">
+                    <span>Angle</span>
+                    <span id="angleData">10.0°</span>
+                </div>
+
+                <div class="data-item">
+                    <span>Acceleration</span>
+                    <span id="accelerationData">1.703 m/s²</span>
+                </div>
+
+                <div class="data-item">
+                    <span>Position</span>
+                    <span id="positionData">0.000 m</span>
+                </div>
+
+                <div class="data-item">
+                    <span>Pixel Y</span>
+                    <span id="pixelData">0.0 px</span>
+                </div>
+
+                <div class="data-item">
+                    <span>Recorded Points</span>
+                    <span id="pointsData">0</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="footer">
+        PHYS 226 Physics Laboratory • Visual Odometry Simulation • Data include small measurement noise for analysis
+    </div>
+
+</div>
+
+
+<script>
+/* ============================================================
+   PHYS 226 — LAB 2
+   VISUAL ODOMETRY & INCLINED AIR-HOCKEY TABLE
+
+   Standalone HTML5 / JavaScript simulation
+   Suitable for GitHub Pages + Canvas iframe
+   ============================================================ */
+
+
+/* =========================
+   CANVAS SETUP
+   ========================= */
+
+const canvas = document.getElementById("simulationCanvas");
+const ctx = canvas.getContext("2d");
+
+let canvasWidth = 800;
+let canvasHeight = 450;
+
+
+/* =========================
+   DOM REFERENCES
+   ========================= */
+
+const thetaSlider = document.getElementById("theta");
+const velocitySlider = document.getElementById("velocity");
+const gravitySlider = document.getElementById("gravity");
+
+const metersInput = document.getElementById("meters");
+const pixelsInput = document.getElementById("pixels");
+
+const thetaValue = document.getElementById("thetaValue");
+const velocityValue = document.getElementById("velocityValue");
+const gravityValue = document.getElementById("gravityValue");
+const alphaValue = document.getElementById("alphaValue");
+
+const timeDisplay = document.getElementById("timeDisplay");
+const speedDisplay = document.getElementById("speedDisplay");
+const accelDisplay = document.getElementById("accelDisplay");
+
+const xPixelDisplay = document.getElementById("xPixelDisplay");
+const yPixelDisplay = document.getElementById("yPixelDisplay");
+
+const angleData = document.getElementById("angleData");
+const accelerationData = document.getElementById("accelerationData");
+const positionData = document.getElementById("positionData");
+const pixelData = document.getElementById("pixelData");
+const pointsData = document.getElementById("pointsData");
+
+const status = document.getElementById("status");
+
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+const resetBtn = document.getElementById("resetBtn");
+const downloadBtn = document.getElementById("downloadBtn");
+
+
+/* =========================
+   SIMULATION STATE
+   ========================= */
+
+let theta = 10;
+let v0 = 1.0;
+let g = 9.8;
+
+let meters = 1.0;
+let pixels = 100.0;
+
+let alpha = meters / pixels;
+
+let acceleration = 0;
+
+let simulationTime = 0;
+let lastTimestamp = null;
+
+let running = false;
+let paused = false;
+
+let animationID = null;
+
+let data = [];
+
+
+/* =========================
+   PUCK STATE
+   ========================= */
+
+let puck = {
+    distance: 0,
+    xPixel: 0,
+    yPixel: 0
+};
+
+
+/* =========================
+   TABLE GEOMETRY
+   ========================= */
+
+let table = {
+    left: 80,
+    right: 720,
+    top: 100,
+    bottom: 390,
+    angle: 10
+};
+
+
+/* =========================
+   RESIZE CANVAS
+   ========================= */
+
+function resizeCanvas() {
+
+    const rect = canvas.getBoundingClientRect();
+
+    const devicePixelRatio =
+        Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+
+    canvasWidth = rect.width;
+    canvasHeight = rect.height;
+
+    ctx.setTransform(
+        devicePixelRatio,
+        0,
+        0,
+        devicePixelRatio,
+        0,
+        0
+    );
+
+    updateTableGeometry();
+    draw();
+}
+
+window.addEventListener("resize", resizeCanvas);
+
+
+/* =========================
+   TABLE GEOMETRY
+   ========================= */
+
+function updateTableGeometry() {
+
+    const marginX = Math.max(45, canvasWidth * 0.09);
+    const marginY = Math.max(40, canvasHeight * 0.13);
+
+    table.left = marginX;
+    table.right = canvasWidth - marginX;
+
+    table.top = marginY;
+    table.bottom = canvasHeight - marginY;
+
+    table.angle = theta;
+}
+
+
+/* =========================
+   PARAMETERS
+   ========================= */
+
+function updateParameters() {
+
+    theta = parseFloat(thetaSlider.value);
+    v0 = parseFloat(velocitySlider.value);
+    g = parseFloat(gravitySlider.value);
+
+    meters = parseFloat(metersInput.value) || 1;
+    pixels = parseFloat(pixelsInput.value) || 100;
+
+    if (pixels <= 0) {
+        pixels = 100;
+        pixelsInput.value = 100;
+    }
+
+    if (meters <= 0) {
+        meters = 1;
+        metersInput.value = 1;
+    }
+
+    alpha = meters / pixels;
+
+    acceleration =
+        g * Math.sin(theta * Math.PI / 180);
+
+    thetaValue.textContent = theta.toFixed(1);
+    velocityValue.textContent = v0.toFixed(2);
+    gravityValue.textContent = g.toFixed(2);
+    alphaValue.textContent = alpha.toFixed(4);
+
+    angleData.textContent = theta.toFixed(1) + "°";
+
+    accelerationData.textContent =
+        acceleration.toFixed(3) + " m/s²";
+
+    updateTableGeometry();
+
+    if (!running) {
+        draw();
+    }
+}
+
+
+/* =========================
+   PHYSICS
+   ========================= */
+
+/*
+    Position measured along the incline:
+
+    y(t) = y0 + v0*t + 0.5*a*t²
+
+    The positive direction is initially
+    chosen to be the direction of v0.
+
+    Gravity acts down the incline.
+*/
+
+function calculatePosition(t) {
+
+    return (
+        v0 * t +
+        0.5 * acceleration * t * t
+    );
+}
+
+
+function calculateVelocity(t) {
+
+    return v0 + acceleration * t;
+}
+
+
+/* =========================
+   TABLE COORDINATE SYSTEM
+   ========================= */
+
+function getTableLengthPixels() {
+
+    return Math.sqrt(
+        Math.pow(table.right - table.left, 2) +
+        Math.pow(table.bottom - table.top, 2)
+    );
+}
+
+
+/*
+    Convert distance along the inclined table
+    into screen coordinates.
+*/
+
+function distanceToScreen(distanceMeters) {
+
+    const distancePixels = distanceMeters / alpha;
+
+    const dx = table.right - table.left;
+    const dy = table.bottom - table.top;
+
+    const tableLength =
+        Math.sqrt(dx * dx + dy * dy);
+
+    const ux = dx / tableLength;
+    const uy = dy / tableLength;
+
+    return {
+        x: table.left + ux * distancePixels,
+        y: table.top + uy * distancePixels
+    };
+}
+
+
+/* =========================
+   DRAW TABLE
+   ========================= */
+
+function drawTable() {
+
+    const dx = table.right - table.left;
+    const dy = table.bottom - table.top;
+
+    const length =
+        Math.sqrt(dx * dx + dy * dy);
+
+    const ux = dx / length;
+    const uy = dy / length;
+
+    const nx = -uy;
+    const ny = ux;
+
+    const thickness = 22;
+
+    const p1 = {
+        x: table.left,
+        y: table.top
+    };
+
+    const p2 = {
+        x: table.right,
+        y: table.bottom
+    };
+
+    const p3 = {
+        x: table.right + nx * thickness,
+        y: table.bottom + ny * thickness
+    };
+
+    const p4 = {
+        x: table.left + nx * thickness,
+        y: table.top + ny * thickness
+    };
+
+    /* Table shadow */
+
+    ctx.beginPath();
+
+    ctx.moveTo(p1.x + 4, p1.y + 7);
+    ctx.lineTo(p2.x + 4, p2.y + 7);
+    ctx.lineTo(p3.x + 4, p3.y + 7);
+    ctx.lineTo(p4.x + 4, p4.y + 7);
+    ctx.closePath();
+
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.fill();
+
+    /* Table surface */
+
+    ctx.beginPath();
+
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y);
+    ctx.closePath();
+
+    ctx.fillStyle = "#edf4f8";
+    ctx.fill();
+
+    ctx.strokeStyle = "#27384a";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+
+    /* Center line */
+
+    ctx.save();
+
+    ctx.strokeStyle = "rgba(30,80,120,0.25)";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        table.left + nx * 5,
+        table.top + ny * 5
+    );
+
+    ctx.lineTo(
+        table.right + nx * 5,
+        table.bottom + ny * 5
+    );
+
+    ctx.stroke();
+
+    ctx.restore();
+
+
+    /* Grid / visual-odometry markers */
+
+    const markerSpacing = 50;
+
+    for (
+        let d = 0;
+        d <= length;
+        d += markerSpacing
+    ) {
+
+        const x = table.left + ux * d;
+        const y = table.top + uy * d;
+
+        ctx.beginPath();
+
+        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+
+        ctx.fillStyle = "#8ba2b5";
+        ctx.fill();
+    }
+
+
+    /* Table direction arrow */
+
+    const arrowStartDistance = 40;
+
+    const ax =
+        table.left + ux * arrowStartDistance;
+
+    const ay =
+        table.top + uy * arrowStartDistance;
+
+    const arrowLength = 65;
+
+    const bx =
+        ax + ux * arrowLength;
+
+    const by =
+        ay + uy * arrowLength;
+
+    ctx.strokeStyle = "#536b7d";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+
+    const head = 9;
+
+    ctx.beginPath();
+
+    ctx.moveTo(bx, by);
+
+    ctx.lineTo(
+        bx - ux * head + nx * head * 0.6,
+        by - uy * head + ny * head * 0.6
+    );
+
+    ctx.moveTo(bx, by);
+
+    ctx.lineTo(
+        bx - ux * head - nx * head * 0.6,
+        by - uy * head - ny * head * 0.6
+    );
+
+    ctx.stroke();
+
+
+    /* Angle indicator */
+
+    drawAngleIndicator();
+}
+
+
+/* =========================
+   ANGLE INDICATOR
+   ========================= */
+
+function drawAngleIndicator() {
+
+    const baseX = table.left + 15;
+    const baseY = table.top + 55;
+
+    const radius = 35;
+
+    ctx.save();
+
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        baseX,
+        baseY,
+        radius,
+        0,
+        Math.atan2(
+            table.bottom - table.top,
+            table.right - table.left
+        )
+    );
+
+    ctx.stroke();
+
+    ctx.fillStyle = "#9a5b00";
+    ctx.font = "bold 11px Arial";
+
+    ctx.fillText(
+        "θ = " + theta.toFixed(1) + "°",
+        baseX + 38,
+        baseY - 5
+    );
+
+    ctx.restore();
+}
+
+
+/* =========================
+   DRAW PUCK
+   ========================= */
+
+function drawPuck() {
+
+    const screen =
+        distanceToScreen(puck.distance);
+
+    puck.xPixel = screen.x;
+    puck.yPixel = screen.y;
+
+    const radius = 13;
+
+    /* Puck shadow */
+
+    ctx.beginPath();
+
+    ctx.arc(
+        screen.x + 3,
+        screen.y + 4,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "rgba(0,0,0,0.20)";
+    ctx.fill();
+
+
+    /* Puck */
+
+    ctx.beginPath();
+
+    ctx.arc(
+        screen.x,
+        screen.y,
+        radius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "#d63384";
+    ctx.fill();
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+
+    /* Visual odometry crosshair */
+
+    ctx.save();
+
+    ctx.strokeStyle = "#ff3b30";
+    ctx.lineWidth = 2;
+
+    const cross = 22;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        screen.x - cross,
+        screen.y
+    );
+
+    ctx.lineTo(
+        screen.x + cross,
+        screen.y
+    );
+
+    ctx.moveTo(
+        screen.x,
+        screen.y - cross
+    );
+
+    ctx.lineTo(
+        screen.x,
+        screen.y + cross
+    );
+
+    ctx.stroke();
+
+
+    /* Target circle */
+
+    ctx.beginPath();
+
+    ctx.arc(
+        screen.x,
+        screen.y,
+        18,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.stroke();
+
+    ctx.restore();
+
+
+    /* Coordinate label */
+
+    ctx.save();
+
+    ctx.font = "bold 10px monospace";
+
+    const label =
+        "(" +
+        screen.x.toFixed(1) +
+        ", " +
+        screen.y.toFixed(1) +
+        ") px";
+
+    const labelX = screen.x + 22;
+    const labelY = screen.y - 15;
+
+    ctx.fillStyle = "rgba(255,255,255,0.90)";
+
+    ctx.fillRect(
+        labelX - 3,
+        labelY - 10,
+        ctx.measureText(label).width + 6,
+        15
+    );
+
+    ctx.fillStyle = "#b42318";
+
+    ctx.fillText(
+        label,
+        labelX,
+        labelY
+    );
+
+    ctx.restore();
+}
+
+
+/* =========================
+   DRAW COMPLETE SCENE
+   ========================= */
+
+function draw() {
+
+    ctx.clearRect(
+        0,
+        0,
+        canvasWidth,
+        canvasHeight
+    );
+
+
+    /* Background */
+
+    const gradient =
+        ctx.createLinearGradient(
+            0,
+            0,
+            0,
+            canvasHeight
+        );
+
+    gradient.addColorStop(
+        0,
+        "#dce8f1"
+    );
+
+    gradient.addColorStop(
+        1,
+        "#c8d5e1"
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.fillRect(
+        0,
+        0,
+        canvasWidth,
+        canvasHeight
+    );
+
+
+    /* Camera frame */
+
+    ctx.strokeStyle =
+        "rgba(30,50,70,0.15)";
+
+    ctx.lineWidth = 1;
+
+    ctx.strokeRect(
+        15,
+        15,
+        canvasWidth - 30,
+        canvasHeight - 30
+    );
+
+
+    drawTable();
+    drawPuck();
+
+
+    /* Coordinate axes legend */
+
+    ctx.fillStyle = "#52627a";
+    ctx.font = "10px Arial";
+
+    ctx.fillText(
+        "Camera view / pixel coordinate system",
+        25,
+        canvasHeight - 20
+    );
+}
+
+
+/* =========================
+   DATA RECORDING
+   ========================= */
+
+function recordData() {
+
+    /*
+       Realistic small camera measurement noise.
+
+       Pixel noise is kept deliberately small:
+       approximately ±1.2 pixels.
+    */
+
+    const noiseX =
+        (Math.random() - 0.5) * 2.4;
+
+    const noiseY =
+        (Math.random() - 0.5) * 2.4;
+
+    data.push({
+        time: simulationTime,
+        x: puck.xPixel + noiseX,
+        y: puck.yPixel + noiseY
+    });
+
+    pointsData.textContent = data.length;
+}
+
+
+/* =========================
+   UPDATE READOUT
+   ========================= */
+
+function updateReadout() {
+
+    const velocity =
+        calculateVelocity(simulationTime);
+
+    const position =
+        calculatePosition(simulationTime);
+
+    timeDisplay.textContent =
+        simulationTime.toFixed(3);
+
+    speedDisplay.textContent =
+        velocity.toFixed(3);
+
+    accelDisplay.textContent =
+        acceleration.toFixed(3);
+
+    xPixelDisplay.textContent =
+        puck.xPixel.toFixed(1);
+
+    yPixelDisplay.textContent =
+        puck.yPixel.toFixed(1);
+
+    positionData.textContent =
+        position.toFixed(3) + " m";
+
+    pixelData.textContent =
+        puck.yPixel.toFixed(1) + " px";
+}
+
+
+/* =========================
+   SIMULATION LOOP
+   ========================= */
+
+function animationLoop(timestamp) {
+
+    if (!running) {
+        return;
+    }
+
+    if (lastTimestamp === null) {
+        lastTimestamp = timestamp;
+    }
+
+    const deltaTime =
+        Math.min(
+            (timestamp - lastTimestamp) / 1000,
+            0.05
+        );
+
+    lastTimestamp = timestamp;
+
+    simulationTime += deltaTime;
+
+    puck.distance =
+        calculatePosition(simulationTime);
+
+
+    /*
+       Keep the puck inside the visible table.
+
+       When it reaches the end, automatically stop.
+    */
+
+    const tableLengthPixels =
+        getTableLengthPixels();
+
+    const maximumDistance =
+        tableLengthPixels * alpha;
+
+    if (puck.distance >= maximumDistance) {
+
+        puck.distance = maximumDistance;
+
+        running = false;
+        paused = false;
+
+        status.textContent = "FINISHED";
+        status.className = "status";
+
+    } else {
+
+        /*
+           Record approximately every 50 ms.
+        */
+
+        if (
+            data.length === 0 ||
+            simulationTime -
+            data[data.length - 1].time >= 0.05
+        ) {
+            recordData();
+        }
+    }
+
+    draw();
+    updateReadout();
+
+    if (running) {
+        animationID =
+            requestAnimationFrame(animationLoop);
+    }
+}
+
+
+/* =========================
+   START
+   ========================= */
+
+function startSimulation() {
+
+    if (running) {
+        return;
+    }
+
+    /*
+       If the previous trial reached the end,
+       start a new trial automatically.
+    */
+
+    const tableLengthPixels =
+        getTableLengthPixels();
+
+    const maximumDistance =
+        tableLengthPixels * alpha;
+
+    if (puck.distance >= maximumDistance) {
+
+        resetSimulation();
+    }
+
+    running = true;
+    paused = false;
+    lastTimestamp = null;
+
+    status.textContent = "RUNNING";
+    status.className = "status running";
+
+    animationID =
+        requestAnimationFrame(animationLoop);
+}
+
+
+/* =========================
+   PAUSE
+   ========================= */
+
+function pauseSimulation() {
+
+    if (!running) {
+        return;
+    }
+
+    running = false;
+    paused = true;
+
+    if (animationID) {
+        cancelAnimationFrame(animationID);
+    }
+
+    status.textContent = "PAUSED";
+    status.className = "status paused";
+
+    lastTimestamp = null;
+}
+
+
+/* =========================
+   RESET
+   ========================= */
+
+function resetSimulation() {
+
+    running = false;
+    paused = false;
+
+    if (animationID) {
+        cancelAnimationFrame(animationID);
+    }
+
+    simulationTime = 0;
+    lastTimestamp = null;
+
+    puck.distance = 0;
+
+    data = [];
+
+    status.textContent = "READY";
+    status.className = "status";
+
+    pointsData.textContent = "0";
+
+    updateParameters();
+    updateReadout();
+    draw();
+}
+
+
+/* =========================
+   CSV EXPORT
+   ========================= */
+
+function downloadCSV() {
+
+    /*
+       If the user has not run the simulation,
+       generate a short synthetic trial so that
+       the download still contains useful data.
+    */
+
+    if (data.length === 0) {
+
+        const dt = 0.05;
+
+        const tableLengthPixels =
+            getTableLengthPixels();
+
+        const maximumDistance =
+            tableLengthPixels * alpha;
+
+        let t = 0;
+
+        while (true) {
+
+            const position =
+                calculatePosition(t);
+
+            if (position >= maximumDistance) {
+                break;
+            }
+
+            const screen =
+                distanceToScreen(position);
+
+            const noiseX =
+                (Math.random() - 0.5) * 2.4;
+
+            const noiseY =
+                (Math.random() - 0.5) * 2.4;
+
+            data.push({
+                time: t,
+                x: screen.x + noiseX,
+                y: screen.y + noiseY
+            });
+
+            t += dt;
+
+            if (t > 30) {
+                break;
+            }
+        }
+    }
+
+
+    let csv =
+        "time_s,x_pixel,y_pixel\n";
+
+    data.forEach(row => {
+
+        csv +=
+            row.time.toFixed(3) +
+            "," +
+            row.x.toFixed(2) +
+            "," +
+            row.y.toFixed(2) +
+            "\n";
+    });
+
+
+    const blob =
+        new Blob(
+            [csv],
+            {
+                type: "text/csv;charset=utf-8;"
+            }
+        );
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const link =
+        document.createElement("a");
+
+    link.href = url;
+
+    const angleText =
+        theta.toFixed(1).replace(".", "_");
+
+    link.download =
+        "PHYS226_Lab2_Visual_Odometry_" +
+        angleText +
+        "deg.csv";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+}
+
+
+/* =========================
+   EVENT LISTENERS
+   ========================= */
+
+thetaSlider.addEventListener(
+    "input",
+    updateParameters
+);
+
+velocitySlider.addEventListener(
+    "input",
+    updateParameters
+);
+
+gravitySlider.addEventListener(
+    "input",
+    updateParameters
+);
+
+metersInput.addEventListener(
+    "input",
+    updateParameters
+);
+
+pixelsInput.addEventListener(
+    "input",
+    updateParameters
+);
+
+startBtn.addEventListener(
+    "click",
+    startSimulation
+);
+
+pauseBtn.addEventListener(
+    "click",
+    pauseSimulation
+);
+
+resetBtn.addEventListener(
+    "click",
+    resetSimulation
+);
+
+downloadBtn.addEventListener(
+    "click",
+    downloadCSV
+);
+
+
+/* =========================
+   INITIALIZATION
+   ========================= */
+
+updateParameters();
+
+resizeCanvas();
+
+resetSimulation();
+
+</script>
+
+</body>
+</html>
