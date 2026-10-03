@@ -1,0 +1,191 @@
+[3:14 PM, 10/2/2026] Sana: Below code for simulating 25.31
+[3:14 PM, 10/2/2026] Sana: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restructured Circuit Simulator - 9 Ohm Between Batteries</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f7fafc;
+            color: #2d3748;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+        }
+        h1 {
+            color: #1a202c;
+            text-align: center;
+            margin-top: 0;
+            font-size: 22px;
+        }
+        .toggle-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .toggle-btn {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 2px solid #4a5568;
+            background-color: white;
+            color: #4a5568;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .toggle-btn.active {
+            background-color: #4a5568;
+            color: white;
+        }
+        .circuit-box {
+            background-color: #edf2f7;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            height: 280px;
+            position: relative;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .loop-wire {
+            width: 60%;
+            height: 160px;
+            border: 4px dashed #a0aec0;
+            position: relative;
+        }
+        .node {
+            position: absolute;
+            background-color: #fff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            white-space: nowrap;
+        }
+        .resistor { border: 2px solid #dd6b20; color: #dd6b20; }
+        .battery { border: 2px solid #38a169; color: #38a169; }
+        .arrow {
+            position: absolute;
+            font-size: 20px;
+            color: #3182ce;
+            font-weight: bold;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        h2 {
+            font-size: 15px;
+            color: #4a5568;
+            margin-top: 0;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 6px;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .val { font-family: monospace; font-weight: bold; color: #2b6cb0; }
+        .alert-val { color: #e53e3e; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Restructured Loop Dashboard (9 Ω Between 16V and 8V Batteries)</h1>
+    
+    <div class="toggle-container">
+        <button id="b1" class="toggle-btn active" onclick="toggleMode('opposing')">Batteries Opposing</button>
+        <button id="b2" class="toggle-btn" onclick="toggleMode('reinforcing')">Batteries Flipped (Reinforcing)</button>
+    </div>
+
+    <div class="circuit-box">
+        <div class="loop-wire">
+            <!-- Top and Bottom Branches: Batteries -->
+            <div id="bat-top" class="node battery" style="top: -15px; right: 20%;">[ + | - ] 16V</div>
+            <div class="node battery" style="bottom: -15px; right: 20%;">[ + | - ] 8V</div>
+
+            <!-- Right Branch: 9 Ohm Resistor positioned directly between top and bottom lines -->
+            <div class="node resistor" style="right: -40px; top: 45%; transform: rotate(90deg);">9.0 Ω</div>
+
+            <!-- Left Branch: Three Resistors in Series (1.6, 5.0, 1.4) -->
+            <div class="node resistor" style="left: -40px; top: 15%; transform: rotate(-90deg);">1.6 Ω</div>
+            <div class="node resistor" style="left: -40px; top: 45%; transform: rotate(-90deg);">5.0 Ω</div>
+            <div class="node resistor" style="left: -40px; top: 75%; transform: rotate(-90deg);">1.4 Ω</div>
+
+            <!-- Dynamic Flow Arrow indicators -->
+            <div id="flow-dir" class="arrow" style="top: -22px; left: 30%;">🡨</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>Circuit System Totals</h2>
+            <div class="row"><span>Left Branch (1.6 + 5.0 + 1.4):</span><span class="val">8.00 Ω</span></div>
+            <div class="row"><span>Right Branch (Between Batteries):</span><span class="val">9.00 Ω</span></div>
+            <div class="row"><span>Total Network Resistance:</span><span class="val">17.00 Ω</span></div>
+        </div>
+        <div class="panel">
+            <h2>Live Flow Data Output</h2>
+            <div class="row"><span>Net Drive Voltage:</span><span class="val" id="out-v">8.00 V</span></div>
+            <div class="row"><span>Measured Loop Current:</span><span class="val alert-val" id="out-i">0.471 A</span></div>
+            <div class="row"><span>Current Direction:</span><span class="val" id="out-d" style="color:#d35400;">Counter-Clockwise</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleMode(mode) {
+        document.getElementById('b1').classList.remove('active');
+        document.getElementById('b2').classList.remove('active');
+        
+        const bat = document.getElementById('bat-top');
+        const arrow = document.getElementById('flow-dir');
+        const outV = document.getElementById('out-v');
+        const outI = document.getElementById('out-i');
+        const outD = document.getElementById('out-d');
+
+        if(mode === 'opposing') {
+            document.getElementById('b1').classList.add('active');
+            bat.innerText = "[ + | - ] 16V";
+            arrow.innerText = "🡨";
+            outV.innerText = "8.00 V (16V - 8V)";
+            outI.innerText = "0.471 A";
+            outD.innerText = "Counter-Clockwise";
+        } else {
+            document.getElementById('b2').classList.add('active');
+            bat.innerText = "[ - | + ] 16V";
+            arrow.innerText = "➔";
+            outV.innerText = "24.00 V (16V + 8V)";
+            outI.innerText = "1.412 A";
+            outD.innerText = "Clockwise";
+        }
+    }
+</script>
+
+</body>
+</html>
